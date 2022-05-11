@@ -236,6 +236,10 @@ struct ServerOptions {
     // Default: false
     bool use_rdma;
 
+    // Whether the server uses ucx or not
+    // Default: false
+    bool use_ucx;
+
     // Customize parameters of HTTP2, defined in http2.h
     H2Settings h2_settings;
 

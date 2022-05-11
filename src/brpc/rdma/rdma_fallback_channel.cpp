@@ -99,6 +99,7 @@ void SubDone::Run() {
         _use_tcp = true;
         Channel chan;
         _options.use_rdma = false;
+        _options.use_ucx  = false;
         chan.Init(_cntl->_remote_side, &_options);
         chan.CallMethod(_cntl->_method, _cntl, NULL, _cntl->_response, this);
         bthread_id_unlock(_cid);

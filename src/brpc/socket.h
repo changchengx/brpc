@@ -195,6 +195,7 @@ struct SocketOptions {
     void (*on_edge_triggered_events)(Socket*);
     int health_check_interval_s;
     bool use_rdma;
+    bool use_ucx;
     std::shared_ptr<SocketSSLContext> initial_ssl_ctx;
     bthread_keytable_pool_t* keytable_pool;
     SocketConnection* conn;
@@ -846,6 +847,9 @@ private:
 
     // Should use RDMA or not
     RdmaState _rdma_state;
+
+    // TODO: ucx ep
+    void * _ucx_ep;
 };
 
 } // namespace brpc

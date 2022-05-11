@@ -469,6 +469,7 @@ Socket::Socket(Forbidden)
 #else
     , _rdma_state(RDMA_OFF)
 #endif
+    , _ucx_ep(NULL)
 {
     CreateVarsOnce();
     pthread_mutex_init(&_id_wait_list_mutex, NULL);
@@ -660,6 +661,9 @@ int Socket::Create(const SocketOptions& options, SocketId* id) {
                          berror(saved_errno));
             return -1;
         }
+    }
+    if (options.use_ucx) {
+        // TODO
     }
     m->_agent_socket_id.store(INVALID_SOCKET_ID, butil::memory_order_relaxed);
     m->_ninflight_app_health_check.store(0, butil::memory_order_relaxed);
@@ -2602,6 +2606,7 @@ int Socket::GetPooledSocket(SocketUniquePtr* pooled_socket) {
         opt.keytable_pool = _keytable_pool;
         opt.app_connect = _app_connect;
         opt.use_rdma = _rdma_ep ? true : false;
+        opt.use_ucx  = _ucx_ep ? true : false;
         socket_pool = new SocketPool(opt);
         SocketPool* expected = NULL;
         if (!main_sp->socket_pool.compare_exchange_strong(
@@ -2699,6 +2704,7 @@ int Socket::GetShortSocket(SocketUniquePtr* short_socket) {
     opt.keytable_pool = _keytable_pool;
     opt.app_connect = _app_connect;
     opt.use_rdma = _rdma_ep ? true : false;
+    opt.use_ucx  = _ucx_ep ? true : false;
     if (get_client_side_messenger()->Create(opt, &id) != 0 ||
         Socket::Address(id, short_socket) != 0) {
         return -1;

@@ -82,6 +82,7 @@
 #include "brpc/rdma/rdma_fallback_channel.h"
 #include "brpc/rdma/rdma_helper.h"
 #include "brpc/rdma/rdma_traffic_control.h"
+#include "brpc/ucx/ucx_helper.h"               // brpc::ucx namespace
 
 inline std::ostream& operator<<(std::ostream& os, const timeval& tm) {
     const char old_fill = os.fill();
@@ -147,7 +148,8 @@ ServerOptions::ServerOptions()
     , http_master_service(NULL)
     , health_reporter(NULL)
     , rtmp_service(NULL) 
-    , use_rdma(false) {
+    , use_rdma(false)
+    , use_ucx(false) {
     if (s_ncore > 0) {
         num_threads = s_ncore + 1;
     }
@@ -709,6 +711,28 @@ static bool OptionsAvailableOverRdma(const ServerOptions* opt) {
 }
 #endif
 
+#ifdef BRPC_UCX
+static bool OptionsAvailableOverUcx(const ServerOptions* opt) {
+    if (opt->rtmp_service) {
+        LOG(WARNING) << "RTMP is not supported by UCX";
+        return false;
+    }
+    if (opt->has_ssl_options()) {
+        LOG(WARNING) << "SSL is not supported by UCX";
+        return false;
+    }
+    if (opt->nshead_service) {
+        LOG(WARNING) << "NSHEAD is not supported by UCX";
+        return false;
+    }
+    if (opt->mongo_service_adaptor) {
+        LOG(WARNING) << "MONGO is not supported by UCX";
+        return false;
+    }
+    return true;
+}
+#endif
+
 static bool CreateConcurrencyLimiter(const AdaptiveMaxConcurrency& amc,
                                      ConcurrencyLimiter** out) {
     if (amc.type() == AdaptiveMaxConcurrency::UNLIMITED()) {
@@ -776,6 +800,18 @@ int Server::StartInternal(const butil::ip_t& ip,
         rdma::GlobalRdmaInitializeOrDie();
 #endif
     }
+
+    if (_options.use_ucx) {
+#ifndef BRPC_UCX
+        LOG(WARNING) << "This libbrpc.a does not support UCX";
+        return -1;
+#else
+        if (!OptionsAvailableOverUcx(&_options)) {
+            return -1;
+        }
+        ucx::GlobalUcxInitializeOrDie();
+#endif
+	}
 
     if (!_options.h2_settings.IsValid(true/*log_error*/)) {
         LOG(ERROR) << "Invalid h2_settings";
@@ -1017,6 +1053,9 @@ int Server::StartInternal(const butil::ip_t& ip,
             if (rh == NULL) {
                 continue;
             }
+        }
+        if (_options.use_ucx) {
+            // TODO
         }
         if (_am == NULL) {
             _am = BuildAcceptor();

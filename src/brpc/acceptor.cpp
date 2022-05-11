@@ -297,6 +297,7 @@ void Acceptor::OnNewConnectionsUntilEAGAIN(Socket* acception) {
         options.user = acception->user();
         options.on_edge_triggered_events = InputMessenger::OnNewMessages;
         options.use_rdma = (am->_listened_rdma != NULL);
+        options.use_ucx  = false; //TODO: update
         options.initial_ssl_ctx = am->_ssl_ctx;
         if (Socket::Create(options, &socket_id) != 0) {
             LOG(ERROR) << "Fail to create Socket";

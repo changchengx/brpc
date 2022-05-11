@@ -82,23 +82,23 @@ struct SocketMapKeyHasher {
 // Return 0 on success, -1 otherwise.
 int SocketMapInsert(const SocketMapKey& key, SocketId* id,
                     const std::shared_ptr<SocketSSLContext>& ssl_ctx,
-                    bool use_rdma);
+                    bool use_rdma, bool use_ucx);
 
 inline int SocketMapInsert(const SocketMapKey& key, SocketId* id) {
     std::shared_ptr<SocketSSLContext> empty_ptr;
-    return SocketMapInsert(key, id, empty_ptr, false);
+    return SocketMapInsert(key, id, empty_ptr, false, false);
 }
 
 inline int SocketMapInsert(const SocketMapKey& key, SocketId* id,
-                           bool use_rdma) {
+                           bool use_rdma, bool use_ucx) {
     std::shared_ptr<SocketSSLContext> empty_ptr;
-    return SocketMapInsert(key, id, empty_ptr, use_rdma);
+    return SocketMapInsert(key, id, empty_ptr, use_rdma, use_ucx);
 }
 
 inline int SocketMapInsert(const SocketMapKey& key, SocketId* id,
                            const std::shared_ptr<SocketSSLContext>& ssl_ctx) {
     std::shared_ptr<SocketSSLContext> empty_ptr;
-    return SocketMapInsert(key, id, ssl_ctx, false);
+    return SocketMapInsert(key, id, ssl_ctx, false, false);
 }
 
 // Find the SocketId associated with `key'.
@@ -159,20 +159,20 @@ public:
     int Init(const SocketMapOptions&);
     int Insert(const SocketMapKey& key, SocketId* id,
                const std::shared_ptr<SocketSSLContext>& ssl_ctx,
-               bool use_rdma);
+               bool use_rdma, bool use_ucx);
     int Insert(const SocketMapKey& key, SocketId* id) {
         std::shared_ptr<SocketSSLContext> empty_ptr;
-        return Insert(key, id, empty_ptr, false);
+        return Insert(key, id, empty_ptr, false, false);
     }
     int Insert(const SocketMapKey& key, SocketId* id,
-               bool use_rdma) {
+               bool use_rdma, bool use_ucx) {
         std::shared_ptr<SocketSSLContext> empty_ptr;
-        return Insert(key, id, empty_ptr, use_rdma);
+        return Insert(key, id, empty_ptr, use_rdma, use_ucx);
     }
     int Insert(const SocketMapKey& key, SocketId* id,
                const std::shared_ptr<SocketSSLContext>& ssl_ctx) {
         std::shared_ptr<SocketSSLContext> empty_ptr;
-        return Insert(key, id, ssl_ctx, false);
+        return Insert(key, id, ssl_ctx, false, false);
     }
 
     void Remove(const SocketMapKey& key, SocketId expected_id);

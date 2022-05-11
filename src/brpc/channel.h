@@ -129,6 +129,10 @@ struct ChannelOptions {
     // Default: false
     bool use_rdma;
 
+    // Let this channel use ucx
+    // Default: false
+    bool use_ucx;
+
     // Channels with same connection_group share connections.
     // In other words, set to a different value to stop sharing connections.
     // Case-sensitive, leading and trailing spaces are ignored.
