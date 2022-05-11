@@ -8,6 +8,11 @@ if(WITH_RDMA)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DBRPC_RDMA")
 endif()
 
+if(WITH_UCX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBRPC_UCX")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DBRPC_UCX")
+endif()
+
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/src)
 

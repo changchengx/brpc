@@ -7,6 +7,7 @@ option(DEBUG "Print debug logs" OFF)
 option(WITH_DEBUG_SYMBOLS "With debug symbols" ON)
 option(WITH_THRIFT "With thrift framed protocol supported" OFF)
 option(WITH_RDMA "With RDMA supported" OFF)
+option(WITH_UCX "With UCX supported" OFF)
 option(BUILD_UNIT_TESTS "Whether to build unit tests" OFF)
 option(DOWNLOAD_GTEST "Download and build a fresh copy of googletest. Requires Internet access." ON)
 
