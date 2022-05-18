@@ -17,6 +17,7 @@
 #include "butil/atomicops.h"
 #include "butil/logging.h"
 #include "butil/endpoint.h"
+#include "butil/fd_utility.h"                     // butil::make_non_blocking
 #include "brpc/socket.h"
 
 namespace brpc {
@@ -44,15 +45,26 @@ struct UcxCluster {
 
 static UcxCluster g_cluster = { 0, 0 };
 
+static ucp_context_h g_context = NULL;
+static ucp_worker_h  g_worker = NULL;
+static SocketId g_async_socket;
+
 static const size_t SYSFS_SIZE = 4096;
 
 static void GlobalRelease() {
     g_ucx_available.store(false, butil::memory_order_release);
     sleep(1);  // to avoid unload library too early
 
-    /*
-     * TODO: release resource
-     */
+    if (g_worker != NULL) {
+	ucp_worker_destroy(g_worker);
+	g_worker = NULL;
+    }
+
+    if (g_context != NULL) {
+        ucp_cleanup(g_context);
+        g_context = NULL;
+    }
+
 }
 
 static struct UcxCluster ParseUcxCluster(const std::string& str) {
@@ -103,19 +115,17 @@ static struct UcxCluster ParseUcxCluster(const std::string& str) {
     return ucx_cluster;
 }
 
-static int ReadUcxDynamicLib() {
-    g_handle_ucx = dlopen("libucp.so", RTLD_LAZY);
-    if (!g_handle_ucx) {
-        LOG(ERROR) << "Fail to load libucp.so due to " << dlerror();
-        return -1;
-    }
-
-    return 0;
-}
-
 static inline void ExitWithError() {
     GlobalRelease();
     exit(1);
+}
+
+static void OnUcxWorkerProgress(Socket* m) {
+   int progress = Socket::PROGRESS_INIT;
+   while (ucp_worker_arm(g_worker) == UCS_ERR_BUSY) {
+       ucp_worker_progress(g_worker);
+   }
+   m->MoreReadEvents(&progress);
 }
 
 #endif
@@ -125,12 +135,45 @@ static void GlobalUcxInitializeOrDieImpl() {
     CHECK(false) << "This libbdrpc.a does not support UCX";
     exit(1);
 #else
-    if (ReadUcxDynamicLib() < 0) {
-        LOG(ERROR) << "Fail to load ucx dynamic lib";
+
+    ucp_params_t ucp_params;
+    ucp_params.field_mask   = UCP_PARAM_FIELD_FEATURES;
+    ucp_params.features     = UCP_FEATURE_AM | UCP_FEATURE_WAKEUP;
+
+    ucs_status_t status = ucp_init(&ucp_params, NULL, &g_context);
+    if (status != UCS_OK) {
+        LOG(ERROR) << "Failed to initialize UCX global resources";
         ExitWithError();
     }
 
-    // Should it set ibvforinit env here?
+    /* Create worker */
+    ucp_worker_params_t worker_params;
+    worker_params.field_mask  = UCP_WORKER_PARAM_FIELD_THREAD_MODE;
+    worker_params.thread_mode = UCS_THREAD_MODE_MULTI;
+    status = ucp_worker_create(g_context, &worker_params, &g_worker);
+    if (status != UCS_OK) {
+        LOG(ERROR) << "Failed to initialize UCX worker resources";
+        ExitWithError();
+    }
+
+    SocketOptions opt;
+    if (ucp_worker_get_efd(g_worker, &opt.fd) != UCS_OK) {
+        LOG(ERROR) << "failed to get ucp_worker fd to be epoll monitored";
+        ExitWithError();
+    }
+    if (butil::make_non_blocking(opt.fd) < 0) {
+        PLOG(WARNING) << "Fail to set async_fd to nonblocking";
+        ExitWithError();
+    }
+
+    while (ucp_worker_arm(g_worker) == UCS_ERR_BUSY) {
+	ucp_worker_progress(g_worker);
+    }
+    opt.on_edge_triggered_events = OnUcxWorkerProgress;
+    if (Socket::Create(opt, &g_async_socket) < 0) {
+        LOG(WARNING) << "Fail to create socket to deal with UCX event";
+        ExitWithError();
+    }
 
     atexit(GlobalRelease);
 
