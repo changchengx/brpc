@@ -30,7 +30,7 @@ add_library(brpc-static STATIC $<TARGET_OBJECTS:BUTIL_LIB>
                                $<TARGET_OBJECTS:SOURCES_LIB>
                                $<TARGET_OBJECTS:PROTO_LIB>)
 
-target_link_libraries(brpc-shared ${DYNAMIC_LIB})
+target_link_libraries(brpc-shared ${DYNAMIC_LIB} libucp.so)
 
 if(BRPC_WITH_GLOG)
     target_link_libraries(brpc-shared ${GLOG_LIB})
@@ -40,6 +40,7 @@ if(BRPC_WITH_THRIFT)
     target_link_libraries(brpc-shared thrift)
     target_link_libraries(brpc-static thrift)
 endif()
+target_link_libraries(brpc-static libucp.a libuct.a libucs.a libucm.a libbfd.so)
 
 SET_TARGET_PROPERTIES(brpc-static PROPERTIES OUTPUT_NAME brpc CLEAN_DIRECT_OUTPUT 1)
 SET_TARGET_PROPERTIES(brpc-shared PROPERTIES OUTPUT_NAME brpc CLEAN_DIRECT_OUTPUT 1)
@@ -51,7 +52,7 @@ set(protoc_gen_mcpack_SOURCES
     ${PROJECT_SOURCE_DIR}/src/mcpack2pb/generator.cpp
  )
 add_executable(protoc-gen-mcpack ${protoc_gen_mcpack_SOURCES})
-target_link_libraries(protoc-gen-mcpack brpc-shared)
+target_link_libraries(protoc-gen-mcpack brpc-shared libucp.so)
     
 #install directory
 install(TARGETS brpc-shared
